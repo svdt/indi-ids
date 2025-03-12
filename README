@@ -1,0 +1,32 @@
+IDS INDI Driver
+==================
+
+This package provides the INDI driver for IDS cameras
+
+Requirements
+============
+
+You need to install the IDS Drivers for IDS cameras from [here](https://en.ids-imaging.com/downloads.html).
+
+Installation
+============
+
+After the intallation of IDS Drivers and uEye SDK you need to patch `/opt/ids/ueye/include/ueye.h:1711:35`
+
+````
+//  typedef int64_t           LONGLONG;
+````
+
+	
+How to Use
+==========
+
+You can use the IDS INDI Driver in any INDI-compatible client such as OpenPHD, gcx, KStars or Xephem. 
+
+To run the driver from the command line:
+
+````
+$ indiserver indi_ids_ccd
+````
+
+You can then connect to the driver from any client, the default port is 7624.

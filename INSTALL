@@ -1,0 +1,14 @@
+In order to build the INDI gphoto drivers, you must have:
+cmake installed
+INDI installed along with the header files.
+cfitsio installed
+libpthread installed
+dcraw installed
+
+install ueye SDK
+
+and patch /opt/ids/ueye/include/ueye.h:1711:35
+
+````
+//  typedef int64_t           LONGLONG;
+````
