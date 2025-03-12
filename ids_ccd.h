@@ -72,22 +72,15 @@ class IDSCCD : public INDI::CCD
         double ExposureRequest;
 
         // ids driver
-        // gphoto_driver * gphotodrv;
         IDSCamera::UniquePtr ids_camera;
-        // std::map<std::string, cam_opt *> CamOptions;
-        int expTID; /* exposure callback timer id, if any */
-        int optTID; /* callback for exposure timer id */
 
         int timerID;
         bool isTemperatureSupported { false };
-        int m_CaptureTarget {-1};
-
-        int liveVideoWidth  {-1};
-        int liveVideoHeight {-1};
 
         // binning ?
         bool binning { false };
-        std::vector<std::string> colorModes;
+        std::vector<int> binModes {};
+        std::vector<std::string> colorModes {};
 
         INDI::PropertySwitch ColorModeSP {0};
         

@@ -274,6 +274,7 @@ std::map<uint32_t, CameraWidget> getCameras()
         for (size_t i = 0; i < ucl.dwCount; i++)
         {
             auto &info = ucl.uci[i];
+            DEBUGFDEVICE(device, INDI::Logger::DBG_SESSION, "Camera DeviceID: %d, CameraID: %d, SensorID: %d, inUse: %d", info.dwDeviceID, info.dwCameraID, info.dwSensorID, info.dwInUse);
             std::string serial(info.SerNo);
             CameraWidget cam{ info.dwCameraID, serial };
             cameras.emplace(info.dwCameraID, cam);
@@ -309,7 +310,7 @@ INT IDSCamera::connectCam()
     int numCameras;
 
     // Terminate any existing opened cameras
-    setStandbyMode();
+    is_err = setStandbyMode();
 
     // Initialize camera handle
     numCameras = getNumCameras();
@@ -337,7 +338,7 @@ INT IDSCamera::connectCam()
     }
     else if (is_err != IS_SUCCESS)
     {
-        DEBUGDEVICE(device, INDI::Logger::DBG_ERROR, "Failed to init camera.");
+        DEBUGFDEVICE(device, INDI::Logger::DBG_ERROR, "Failed to init camera. Error: %d", is_err);
         return IS_NO_SUCCESS;
     }
     // Set display mode to Device Independent Bitmap (DIB)
@@ -878,7 +879,7 @@ INT IDSCamera::setSubsampling(int& rate, bool reallocate_buffer) {
 bool IDSCamera::isBinningSupported(int rate) {
   INT supportedRates = is_SetBinning(cam_handle_, IS_GET_SUPPORTED_BINNING);
   INT rate_flag = getBinFlag(rate);
-  if (rate_flag == IS_SUBSAMPLING_DISABLE)
+  if (rate != 1 && rate_flag == IS_SUBSAMPLING_DISABLE)
     return false;
   else
     return (supportedRates & rate_flag) == rate_flag;

@@ -250,6 +250,7 @@ bool IDSCCD::ISNewNumber(const char * dev, const char * name, double values[], c
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool IDSCCD::Connect()
 {
+    LOGF_INFO("Connecting to %s", serial.c_str());
     ids_camera = std::make_unique<IDSCamera>(hid, serial);
     if(ids_camera->connectCam() != IS_SUCCESS) {
         LOG_ERROR("Failed to connect to camera.");
@@ -259,6 +260,7 @@ bool IDSCCD::Connect()
     for (auto cm = COLOR_DICTIONARY.cbegin(); cm != COLOR_DICTIONARY.cend(); cm++) {
         std::string mode = cm->first;
         if (ids_camera->isColorModeSupported(mode)) {
+            LOGF_DEBUG("Color support %s", mode.c_str());
             colorModes.push_back(mode);
         }
     }
@@ -275,7 +277,7 @@ bool IDSCCD::Connect()
     for (size_t i = 0; i < colorModes.size(); i++) {
         colorModesLabel.push_back(colorModes[i].c_str());
     }
-    initSwitch(ColorModeSP, colorModes.size(), colorModesLabel.data(), set_on);
+    initSwitch(ColorModeSP, colorModesLabel.size(), colorModesLabel.data(), set_on);
 
     bool auto_wb = false;
     INT r_off = AWBSettings[RedOffset].getValue();
@@ -344,15 +346,20 @@ bool IDSCCD::Connect()
 
     PrimaryCCD.setMinMaxStep("CCD_EXPOSURE", "CCD_EXPOSURE_VALUE", min_exposure / 1000., max_exp_s, 0.001, true);
 
-    int max_bin = 1;
-    for (int i = 1; i < 17; i++) {
-        if (ids_camera->isBinningSupported(i))
-            max_bin = i;
-        else
-            break;
+    for (int bin_i = 2; bin_i < 17; bin_i++) {
+        if (ids_camera->isBinningSupported(bin_i)) {
+            binModes.push_back(bin_i);
+            LOGF_DEBUG("bin %d is supported.", bin_i);
+        } else {
+            LOGF_DEBUG("bin %d is not supported.", bin_i);
+        }
     }
-    PrimaryCCD.setMinMaxStep("CCD_BINNING", "HOR_BIN", 1, max_bin, 1, false);
-    PrimaryCCD.setMinMaxStep("CCD_BINNING", "VER_BIN", 1, max_bin, 1, false);
+    int max_bin = 1;
+    if (binModes.size() > 0)
+        max_bin = binModes.back();
+    LOGF_DEBUG("Bin min: %d max: %d", 1, max_bin);
+    PrimaryCCD.setMinMaxStep("CCD_BINNING", "HOR_BIN", 1, max_bin, 1, true);
+    PrimaryCCD.setMinMaxStep("CCD_BINNING", "VER_BIN", 1, max_bin, 1, true);
 
     LOGF_INFO("%s is online.", getDeviceName());
     return true;
@@ -363,8 +370,6 @@ bool IDSCCD::Connect()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool IDSCCD::Disconnect()
 {
-    // gphoto_close(gphotodrv);
-    // gphotodrv        = nullptr;
     if (ids_camera)
     {
         ids_camera->disconnectCam();
@@ -436,18 +441,23 @@ bool IDSCCD::StartExposure(float duration)
         return false;
     }
 
+    INT binx = PrimaryCCD.getBinX();
+    LOGF_INFO("Set binning to %d.", binx);
+    if (!ids_camera->isBinningSupported(binx)) {
+        LOGF_ERROR("Binning %dX is not supported!", binx);
+        return false;
+    } else if (ids_camera->setBinning(binx, true) != IS_SUCCESS) {
+        LOGF_ERROR("Error could not set binning to %d", binx);
+        PrimaryCCD.setBin(1, 1);
+        return false;
+    }
+
     INT w = PrimaryCCD.getSubW();
     INT h = PrimaryCCD.getSubH();
     INT x = PrimaryCCD.getSubX();
     INT y = PrimaryCCD.getSubY();
     LOGF_INFO("Rect w: %d, h: %d, x: %d, y: %d", w, h, x, y);
     ids_camera->setResolution(w, h, x, y, true);
-
-    INT binx = PrimaryCCD.getBinX();
-    LOGF_INFO("Set binning to %d.", binx);
-    if (ids_camera->setBinning(binx, true) != IS_SUCCESS) {
-        PrimaryCCD.setBin(1, 1);
-    }
     
     LOGF_INFO("Starting %g seconds exposure.", duration);
     if (ids_camera->setFreeRunMode() != IS_SUCCESS) {
